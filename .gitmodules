@@ -1,0 +1,3 @@
+[submodule "Source/DSPresetConverter"]
+	path = Source/DSPresetConverter
+	url = https://github.com/DecentSamples/DSPresetConverter

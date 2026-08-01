@@ -9,8 +9,8 @@
 */
 
 #include <JuceHeader.h>
-#include "DSSFZ.h"
-#include "DSPresetConverter.h"
+#include "DSPresetConverter/Source/DSSFZ.h"
+#include "DSPresetConverter/Source/DSPresetConverter.h"
 
 //==============================================================================
 int main (int argc, char* argv[])
