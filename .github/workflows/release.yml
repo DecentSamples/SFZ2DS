@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: SFZ2DS
+            asset_name: SFZ2DS-linux-x64
+          - os: macos-latest
+            artifact_name: SFZ2DS
+            asset_name: SFZ2DS-macos
+          - os: windows-latest
+            artifact_name: SFZ2DS.exe
+            asset_name: SFZ2DS-windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux audio dev headers
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libjack-jackd2-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --target SFZ2DS --config Release -j4
+
+      - name: Package
+        shell: bash
+        run: |
+          BIN=$(find build -type f -name "${{ matrix.artifact_name }}" | grep -v CMakeFiles | head -1)
+          mkdir -p dist
+          cp "$BIN" dist/
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "../${{ matrix.asset_name }}.zip" "${{ matrix.artifact_name }}"
+          else
+            chmod +x "${{ matrix.artifact_name }}"
+            tar -czf "../${{ matrix.asset_name }}.tar.gz" "${{ matrix.artifact_name }}"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: |
+            ${{ matrix.asset_name }}.zip
+            ${{ matrix.asset_name }}.tar.gz
+          if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} release-assets/ \;
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
